@@ -1,9 +1,7 @@
 package com.ffzs.webflux.security_demo.service;
 
-import com.ffzs.webflux.security_demo.model.MyUser;
 import com.ffzs.webflux.security_demo.model.MyUserDetails;
 import com.ffzs.webflux.security_demo.repository.MyUserDetailsRepository;
-import com.ffzs.webflux.security_demo.repository.MyUserRepository;
 import io.jsonwebtoken.Claims;
 import io.jsonwebtoken.Jwts;
 import io.jsonwebtoken.SignatureAlgorithm;

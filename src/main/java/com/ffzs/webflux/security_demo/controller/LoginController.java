@@ -1,5 +1,7 @@
 package com.ffzs.webflux.security_demo.controller;
 
+import com.fasterxml.jackson.core.JsonProcessingException;
+import com.fasterxml.jackson.databind.ObjectMapper;
 import com.ffzs.webflux.security_demo.model.HttpResult;
 import com.ffzs.webflux.security_demo.model.LoginResponse;
 import com.ffzs.webflux.security_demo.model.MyUser;
@@ -9,15 +11,14 @@ import com.ffzs.webflux.security_demo.service.MyUserService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
+import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.crypto.factory.PasswordEncoderFactories;
 import org.springframework.security.crypto.password.PasswordEncoder;
-import org.springframework.web.bind.annotation.PostMapping;
-import org.springframework.web.bind.annotation.RequestBody;
-import org.springframework.web.bind.annotation.RequestMapping;
-import org.springframework.web.bind.annotation.RestController;
+import org.springframework.web.bind.annotation.*;
 import reactor.core.publisher.Mono;
 
 import java.util.Map;
+import java.util.stream.Collectors;
 
 
 /**
@@ -39,16 +40,32 @@ public class LoginController {
     @PostMapping("login")
     public Mono<HttpResult> login (@RequestBody Map<String, String> user) {
 
+        ObjectMapper mapper = new ObjectMapper();
+
         return Mono.just(user.get("username"))
                 .flatMap(myUserRepository::findByUsername)
                 .doOnNext(i -> log.info("{}", i))
                 .filter(it -> password.matches(user.get("password"), it.getPassword()))
-                .map(it -> new HttpResult(HttpStatus.OK.value(), "成功登录", new LoginResponse(it.getUsername(), it.getAuthorities().toString(), jwtSigner.generateToken(it))))
+                .map(it -> {
+                    try {
+                        return new HttpResult(HttpStatus.OK.value(),
+                                "成功登录",
+                                new LoginResponse(it.getUsername(),
+                                        mapper.writeValueAsString(it
+                                                .getAuthorities()
+                                                .stream()
+                                                .map(GrantedAuthority::getAuthority)
+                                                .collect(Collectors.toList())),
+                                        jwtSigner.generateToken(it)));
+                    } catch (JsonProcessingException e) {
+                        return new HttpResult();
+                    }
+                })
                 .onErrorResume(e -> Mono.empty())
                 .switchIfEmpty(Mono.just(new HttpResult(HttpStatus.UNAUTHORIZED.value(), "登录失败", null)));
     }
 
-
+//    @CrossOrigin
     @PostMapping("signup")
     public Mono<HttpResult> signUp (@RequestBody MyUser user) {
 
